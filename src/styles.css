@@ -3640,3 +3640,29 @@ body.game-focus-open { overflow: hidden; }
 @media (max-width: 700px) and (max-height: 700px) {
   .jump-to-choice { display: flex; width: 100%; justify-content: center; gap: 8px; min-height: 46px; margin: 0 0 10px; background: #304f63; color: #fff; border: 1px solid #304f63; }
 }
+.game-audio-controls { position: relative; flex: 0 0 auto; }
+.audio-settings-button { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 42px; min-height: 42px; padding: 8px 12px; border: 1px solid #cbd8c7; border-radius: 12px; background: #fffdf7; color: #35523c; }
+.audio-settings-panel { position: absolute; right: 0; top: calc(100% + 8px); width: 250px; max-width: calc(100vw - 32px); padding: 15px; border: 1px solid #cad8c6; border-radius: 16px; background: #fffef9; color: #304638; box-shadow: 0 12px 36px #233e3026; z-index: 30; text-align: left; }
+.audio-settings-panel > strong { display: block; margin-bottom: 10px; font-size: 16px; }
+.audio-settings-panel button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 50px; margin: 6px 0; padding: 9px; border: 1px solid #d9e2d4; border-radius: 10px; background: white; color: #304638; text-align: left; }
+.audio-settings-panel button[aria-pressed="true"] { background: #edf5e8; border-color: #95b58a; }
+.audio-settings-panel button span { flex: 1; font-size: 14px; }
+.audio-settings-panel button small { display: block; margin-top: 3px; font-size: 11px; color: #506650; }
+.audio-settings-panel button b { font-size: 12px; white-space: nowrap; }
+.audio-settings-panel p { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: #506650; }
+.scene-audio-controls { position: absolute; top: 18px; right: 18px; z-index: 10; }
+.intro-page, .stage-complete, .ending-page { position: relative; }
+.landing-header .episode-label { margin-left: auto; margin-right: 16px; }
+@media (max-width: 700px) {
+  .audio-settings-button { padding: 8px; }
+  .audio-settings-button > span { display: none; }
+}
+@media (max-width: 480px) {
+  .landing-header .episode-label { display: none; }
+  .landing-header .game-audio-controls { margin-left: auto; }
+  .review-header, .play-focus .review-header { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto 42px 42px; gap: 6px; }
+  .review-header .play-focus-toggle { width: 42px; min-width: 42px; padding: 8px; gap: 0; font-size: 0; }
+  .review-header .focus-label-detail { display: none; }
+  .review-header .review-title small { font-size: 10px; }
+  .review-header .audio-settings-panel { right: -44px; }
+}

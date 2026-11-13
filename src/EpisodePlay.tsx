@@ -10,6 +10,7 @@ import { ChatHistory } from "./Chat";
 import Editor from "./Editor";
 import Photo from "./Photo";
 import { usePlayFocus } from "./usePlayFocus";
+import { GameAudioControls } from "./GameAudio";
 
 type Dispatch = (action: Action) => void;
 
@@ -122,6 +123,7 @@ export default function EpisodePlay({ game, dispatch, saveError }: { game: Game;
         <button className="icon-button" aria-label="홈" onClick={() => dispatch({ type: "reviewPreview" })}><Home size={21} /></button>
         <div className="review-title"><small>{game.episode} · {episodeById(game.episode).title}</small><h1>함께 남길 사진</h1></div>
         <span className="review-progress" aria-label="사진 검토 진행">{reviewedCount(game)} / {photos.length}<small>사진 검토</small></span>
+        <GameAudioControls />
         <button className="play-focus-toggle" aria-label={focus.focused ? "기본 화면으로 돌아가기" : "플레이 화면 크게 보기"}
           aria-pressed={focus.focused} disabled={focus.busy} title={focus.focused ? "기본 화면으로 돌아가기 (Esc)" : "게임만 전체화면으로 크게 보기"} onClick={() => void focus.toggle()}>
           {focus.focused ? <Minimize size={20} /> : <Maximize size={20} />}

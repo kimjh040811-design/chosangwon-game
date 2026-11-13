@@ -1,7 +1,8 @@
 import EpisodePlay from "./EpisodePlay";
 import { assetPath } from "./asset-path";
 import { evaluateTrust } from "./review";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { GameAudioControls, useGameAudio } from "./GameAudio";
 import {
   ArrowLeft,
   ArrowRight,
@@ -25,6 +26,8 @@ export default function App() {
     [started, setStarted] = useState(false);
   const [memories, setMemories] = useState(false),
     [error, setError] = useState("");
+  const audio = useGameAudio();
+  const gameRef = useRef(game);
   const [unreadableSave, setUnreadableSave] = useState<string | null>(() => {
     try {
       return game ? null : localStorage.getItem(SAVE_KEY);
@@ -33,8 +36,15 @@ export default function App() {
     }
   });
   const dispatch = useCallback(
-    (action: Action) => setGame((g) => (g ? reduceGame(g, action) : g)),
-    [],
+    (action: Action) => {
+      const before = gameRef.current;
+      if (!before) return;
+      const after = reduceGame(before, action);
+      gameRef.current = after;
+      setGame(after);
+      audio.transition(before, after, action);
+    },
+    [audio.transition],
   );
   useEffect(() => {
     if (!game) return;
@@ -70,13 +80,17 @@ export default function App() {
     } catch {
       setError("이 브라우저에서는 저장 공간에 접근할 수 없어요.");
     }
-    setGame(reduceGame(newGame("maru"), { type: "reviewStart" }));
+    gameRef.current = reduceGame(newGame("maru"), { type: "reviewStart" });
+    setGame(gameRef.current);
+    audio.activate();
     setStarted(true);
     setMemories(false);
     setUnreadableSave(null);
   }
   function begin() {
-    setGame(reduceGame(newGame("maru"), { type: "reviewStart" }));
+    gameRef.current = reduceGame(newGame("maru"), { type: "reviewStart" });
+    setGame(gameRef.current);
+    audio.activate();
     setStarted(true);
   }
   if (!started)
@@ -92,6 +106,7 @@ export default function App() {
           <span className="episode-label">
             EP.01 <i /> 우리의 추억
           </span>
+          <GameAudioControls />
         </header>
           <main className="title-layout">
             <div className="title-copy">
@@ -139,7 +154,7 @@ export default function App() {
                   <>
                     <button
                       className="primary"
-                      onClick={() => setStarted(true)}
+                      onClick={() => { audio.activate(); setStarted(true); }}
                     >
                       이야기 이어하기 <ArrowRight size={19} />
                     </button>
@@ -199,6 +214,7 @@ export default function App() {
   if (game.stage === "stageComplete")
     return (
       <main className="stage-complete">
+        <div className="scene-audio-controls"><GameAudioControls /></div>
         <p>{game.episode}</p>
         <h1>{episodeById(game.episode).title}</h1>
         <p>{episodeSummary(game.episode, game)}</p>
@@ -238,6 +254,7 @@ export default function App() {
   if (game.stage === "ending")
     return (
       <main className="ending-page">
+        <div className="scene-audio-controls"><GameAudioControls /></div>
         {memories ? (
           <div className="memories-wrap">
             <button className="text-button" onClick={() => setMemories(false)}>

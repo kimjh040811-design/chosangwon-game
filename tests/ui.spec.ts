@@ -9,6 +9,99 @@ mkdirSync("qa/focus/screenshots", { recursive: true });
 mkdirSync("qa/final-polish/screenshots", { recursive: true });
 
 const stored = (page: Page): Promise<Game> => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), SAVE_KEY);
+
+test("supplied BGM starts on interaction, loops, and independent sound settings survive reload", async ({ page }) => {
+  await page.goto("/");
+  const bgm = page.locator("audio[data-game-bgm]");
+  expect(await bgm.evaluate((a: HTMLAudioElement) => a.paused)).toBe(true);
+  await page.getByRole("button", { name: "이야기 시작하기", exact: true }).click();
+  await expect.poll(() => bgm.evaluate((a: HTMLAudioElement) => !a.paused && a.currentTime > 0)).toBe(true);
+  expect(await bgm.evaluate((a: HTMLAudioElement) => a.loop && a.volume === 0.18 && a.duration > 0)).toBe(true);
+  const save = await stored(page);
+  await page.getByRole("button", { name: "소리 설정", exact: true }).click();
+  await page.getByRole("button", { name: "배경음악 끄기", exact: true }).click();
+  await expect.poll(() => bgm.evaluate((a: HTMLAudioElement) => a.paused)).toBe(true);
+  await expect(page.getByRole("button", { name: "효과음 끄기", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "효과음 끄기", exact: true }).click();
+  expect(await stored(page)).toEqual(save);
+  await page.reload();
+  await page.getByRole("button", { name: "이야기 이어하기", exact: true }).click();
+  expect(await bgm.evaluate((a: HTMLAudioElement) => a.paused)).toBe(true);
+  await page.getByRole("button", { name: "소리 설정", exact: true }).click();
+  await expect(page.getByRole("button", { name: "효과음 켜기", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "배경음악 켜기", exact: true }).click();
+  await expect.poll(() => bgm.evaluate((a: HTMLAudioElement) => !a.paused)).toBe(true);
+});
+
+test("sound controls fit a 320px screen and remain available inside fullscreen", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await resume(page, episodeSeed());
+  await page.getByRole("button", { name: "소리 설정", exact: true }).click();
+  const panel = page.locator(".audio-settings-panel");
+  const box = (await panel.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(320);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "플레이 화면 크게 보기", exact: true }).click();
+  await page.getByRole("button", { name: "소리 설정", exact: true }).click();
+  await expect(panel).toBeVisible();
+  expect(await page.evaluate(() => !document.fullscreenElement || document.fullscreenElement.contains(document.querySelector(".audio-settings-panel")))).toBe(true);
+  await page.getByRole("button", { name: "배경음악 끄기", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "기본 화면으로 돌아가기", exact: true })).toBeVisible();
+});
+
+test("effects play once per action and the effects switch immediately silences future actions", async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = window as typeof window & { toneCount: number };
+    w.toneCount = 0;
+    const original = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function () { w.toneCount++; return original.call(this); };
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "이야기 시작하기", exact: true }).click();
+  await page.locator(".intro-actions .primary").click();
+  const count = () => page.evaluate(() => (window as typeof window & { toneCount: number }).toneCount);
+  await expect.poll(count).toBe(1);
+  await page.getByRole("button", { name: "소리 설정", exact: true }).click();
+  await page.getByRole("button", { name: "효과음 끄기", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await page.locator(".intro-actions .primary").click();
+  expect(await count()).toBe(1);
+  await page.getByRole("button", { name: "소리 설정", exact: true }).click();
+  await page.getByRole("button", { name: "효과음 켜기", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await page.locator(".intro-actions .primary").click();
+  await expect.poll(count).toBe(2);
+});
+
+test("sending, receiving and saving use short distinct sounds without sounding on brush movement", async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = window as typeof window & { toneCount: number };
+    w.toneCount = 0;
+    const original = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function () { w.toneCount++; return original.call(this); };
+  });
+  const seed = episodeSeed();
+  seed.speed = 60000;
+  await resume(page, seed);
+  const count = () => page.evaluate(() => (window as typeof window & { toneCount: number }).toneCount);
+  await choose(page, "group");
+  await expect.poll(count).toBe(1);
+  await page.getByRole("button", { name: "친구들에게 사진 보내기", exact: true }).click();
+  await expect.poll(count).toBe(3);
+  await replies(page);
+  await expect.poll(count).toBe(5);
+  await page.getByRole("button", { name: "이 사진 편집하기", exact: true }).click();
+  await coverGroup(page);
+  expect(await count()).toBe(5);
+  await page.getByRole("button", { name: "저장", exact: true }).click();
+  await expect.poll(count).toBe(8);
+  await page.getByRole("button", { name: "친구에게 편집본 보여 주기", exact: true }).click();
+  await expect.poll(count).toBe(10);
+});
 const canvas = (page: Page) => page.getByRole("img", { name: "사진 위에 모자이크 칠하기 또는 스티커 이동", exact: true });
 
 function preparedPreview(game: Game, include: string[]) {

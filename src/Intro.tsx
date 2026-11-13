@@ -1,4 +1,5 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { GameAudioControls } from "./GameAudio";
 import { introLines, nameOf, profile } from "./data";
 import { episodeById } from "./episodes";
 import type { Game } from "./model";
@@ -14,6 +15,7 @@ export default function Intro({
     index = Math.min(game.story.introLine, lines.length - 1);
   return (
     <main className="intro-page" aria-label="주인공의 혼잣말">
+      <div className="scene-audio-controls"><GameAudioControls /></div>
       <img
         className="intro-portrait"
         src={profile(game.hero)}
